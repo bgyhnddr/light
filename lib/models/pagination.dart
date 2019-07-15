@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/foundation.dart' show required;
 import 'package:flutter/material.dart';
 
@@ -22,175 +25,66 @@ class Pagination {
   Pagination(
       {@required Book book,
       @required BookDecoder bookDecoder,
-      @required Size size,
-      int estimateMaxLines: 30})
+      @required Size size})
       : assert(null != book),
         assert(null != bookDecoder),
         assert(null != Style.values),
         assert(null != size),
         _book = book,
         _bookDecoder = bookDecoder,
-        _size = size,
-        _estimateMaxLines = estimateMaxLines {
-    paging = new Paging(size: size, maxLines: estimateMaxLines);
-  }
+        paging = new Paging(size: size);
 
   final Book _book;
   final BookDecoder _bookDecoder;
 
-//  final SystemService service = new SystemService();
+  final BookService bookService = new BookService();
   Paging paging;
-
-  Size _size;
-  int _maxLines;
 
   bool isTemporary;
 
-  Map<int, List<int>> _tmpPagingData;
+  List<int> pageData;
 
-  Map<String, List<int>> _pagingData;
-
-  Map<String, Map<String, List<int>>> _data;
-
-  String _pagingHashCode;
+  int offset = 0;
+  bool loaded = false;
 
   /// Initialize paging data.
-  void init(String pagingHashCode) {
-    /// calculate the max lines
-    paging.maxLines = maxLines;
-    if (null != _pagingHashCode && pagingHashCode == _pagingHashCode) return;
-//    _data = service.bookService.getPagingData(_book);
-    if (null == _data || !_data.containsKey(pagingHashCode)) {
-      /// Use temporary data
-      _tmpPagingData = <int, List<int>>{};
-      isTemporary = true;
-
-      /// TODO:start to calculate paging data if there is not begin
+  void init(StreamController streamController) {
+    pageData = bookService.getPagingData(_book);
+    if (pageData != null) {
+      streamController.add('end');
     } else {
-      _pagingData = _data[pagingHashCode];
-      isTemporary = false;
+      pageData = List<int>();
+      pageData.add(0);
     }
-    _pagingHashCode = pagingHashCode;
   }
 
-  /// Check paging data whether exists.
-  void check(String pagingHashCode) {
-    assert(null != pagingHashCode);
-    if (null == pagingHashCode) return;
-    if (_pagingHashCode == pagingHashCode) {
-      return;
+  void getPageData(StreamController streamController) {
+    var content = _bookDecoder.content;
+
+    for (var i = 0; i < 200; i++) {
+      if (offset < content.length) {
+        offset += paging.getLength(
+            content.substring(offset, min(offset + 400, content.length)));
+        pageData.add(offset);
+      } else {
+        streamController.sink.add('end');
+        return;
+      }
     }
-    if (null == _data || !_data.containsKey(pagingHashCode)) {
-      _tmpPagingData = <int, List<int>>{};
-      isTemporary = true;
-    } else if (null != _data) {
-      _pagingData = _data[pagingHashCode];
-      isTemporary = false;
-    }
-    _pagingHashCode = pagingHashCode;
+    bookService.setPagingData(_book, pageData);
+    streamController.sink.add('${offset.toString()}/${content.length}');
   }
 
   List<int> pagingData(int index) {
-    if (isTemporary) {
-      if (null != _tmpPagingData &&
-          _tmpPagingData.isNotEmpty &&
-          _tmpPagingData.containsKey(index)) {
-        return _tmpPagingData[index];
-      }
-    } else {
-      if (null != _pagingData &&
-          _pagingData.isNotEmpty &&
-          _pagingData.containsKey(index)) {
-        return _pagingData[index];
-      }
+    if (index < pageData.length - 1) {
+      return [pageData[index], pageData[index + 1]];
     }
     return null;
-  }
-
-  int _sectionSize = 430;
-
-  operator []=(int index, List<int> data) {
-    _tmpPagingData[index] = data;
   }
 
   Section section;
 
   operator [](int index) {
-    if (null != pagingData(index)) {
-      return pagingData(index);
-    } else if (null != pagingData(index - 1)) {
-      int offset = pagingData(index - 1)[0] + pagingData(index - 1)[1];
-      for (int i = 1; i < 20; i++) {
-        section = _bookDecoder.getSection(offset, _sectionSize * i);
-        if (null == section) {
-          break;
-        }
-        if (paging.layout(section.content)) {
-          this[index] = [offset, paging.maxLength];
-          break;
-        }
-      }
-    } else {
-      for (int i = 1; i < 20; i++) {
-        section = _bookDecoder.getSection(0, _sectionSize * i);
-        if (paging.layout(section.content)) {
-          this[index] = <int>[0, paging.maxLength];
-          break;
-        }
-      }
-    }
     return pagingData(index);
-  }
-
-  int _estimateMaxLines;
-
-  int get maxLines {
-    if (null != _maxLines) return _maxLines;
-    paging.maxLines = _estimateMaxLines;
-    loop:
-    for (int i = 1; i < 20; i++) {
-      String text = getSectionDemo(0, _sectionSize * i, raw: true);
-      if (!paging.layout(text, onSize: true)) {
-        continue;
-      } else {
-        int start = 0;
-        int end = _estimateMaxLines;
-        int mid = (start + end) ~/ 2;
-        do {
-          paging.maxLines = mid;
-          if (paging.layout(text, onSize: true)) {
-            end = mid;
-            mid = (start + end) ~/ 2;
-          } else {
-            start = mid;
-            mid = (start + end) ~/ 2;
-          }
-          if (start == mid || mid == end) {
-            _maxLines = mid;
-            break loop;
-          }
-        } while (true);
-        break;
-      }
-    }
-    return _maxLines;
-  }
-
-  dynamic getSectionDemo(int offset, int length, {bool raw: false}) {
-    String character = '啊啊啊啊啊啊啊啊啊啊';
-    String content = '';
-    String title = 'get section demo';
-    for (int i = 0; i < length; i++) {
-      content += character;
-      if (content.length > length) {
-        content = content.substring(0, length);
-        break;
-      }
-    }
-    if (true == raw) {
-      return content;
-    } else {
-      return new Section(title: title, content: content);
-    }
   }
 }

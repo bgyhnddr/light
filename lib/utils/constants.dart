@@ -6,7 +6,7 @@ const app_path = 'Yotaku';
 const books_key = 'books';
 
 /// the key used to store progress of reading
-const books_progress = 'bookProgress';
+const books_progress = '_bookProgress';
 
 /// the key used to store styles
 const styles_key = 'styles';

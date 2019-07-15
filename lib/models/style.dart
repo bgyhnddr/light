@@ -159,17 +159,15 @@ class Style {
 
   static double get fontSize {
     if (null == _fontSize) {
-      _fontSize = service.getDouble(font_size) ?? 20.0;
+      _fontSize = service.getDouble(font_size) ?? 30.0;
     }
-    return 18.0;
     return _fontSize;
   }
 
   static double get height {
     if (null == _height) {
-      _height = service.getDouble(line_height) ?? 2.0;
+      _height = service.getDouble(line_height) ?? 1.0;
     }
-    return 1.0;
     return _height;
   }
 

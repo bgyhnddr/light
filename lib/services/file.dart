@@ -119,9 +119,9 @@ class FileService {
       } else {
         /// have not wirte permission, request it
         print('have not write permission, request it');
-        bool requestPermission = await SimplePermissions
+        PermissionStatus requestPermission = await SimplePermissions
             .requestPermission(Permission.WriteExternalStorage);
-        if (true == requestPermission) {
+        if (PermissionStatus.authorized == requestPermission) {
           print('request external directroy permission successful.');
           _havePermission = true;
         } else {

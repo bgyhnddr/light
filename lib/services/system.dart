@@ -91,7 +91,7 @@ class SystemService {
       SimplePermissions.checkPermission(permission);
 
   /// Request a [permission] and return a [Future] with the result
-  Future<bool> requestPermission(permission) =>
+  Future<PermissionStatus> requestPermission(permission) =>
       SimplePermissions.requestPermission(permission);
 
   /// Open app settings on Android and iOs

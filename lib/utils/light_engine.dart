@@ -31,10 +31,11 @@ class LightEngine {
   final Book _book;
 
   final SystemService _service = new SystemService();
+  final BookService bookService = new BookService();
 
   StreamSubscription _streamSubscription;
 
-  Style _style;
+  bool inited = false;
 
   LightEngine._internal({Book book, ValueChanged<VoidCallback> stateSetter})
       : assert(null != book),
@@ -57,38 +58,40 @@ class LightEngine {
 
   BookDecoder _decoder;
 
-  /// Provide [PageController] to [Reader]
-  ///
-  /// When there is pageController already, return it.
-  /// If not, first decode the book, get all content of the book,
-  /// next initialize [Style], used to display, calculate paging data,
-  /// then get [Pagination], which may start a second isolate to calculate paging data,
-  /// finally instantiate PageController and return it.
-  Future<PageController> get controller async {
+  Future init() async {
     print('get controller');
     try {
       if (null == _pageController) {
         if (null == _decoder) {
           _decoder = await BookDecoder.decode(_book);
         }
-        print('flag1');
         if (null == Style.values) {
           await Style.init();
         }
-        print('flag2');
-        if (null == _pagination) {
-          _pagination = new Pagination(
-              book: _book,
-              bookDecoder: _decoder,
-              size: _pageSize);
-          _pagination.init(pagingHashCode);
-        }
-        _pageController = new PageController();
       }
-      return _pageController;
     } catch (e) {
       print('get controller failed. error: $e');
       throw e;
+    }
+  }
+
+  void buildPage(pageControllerStream) async {
+    if (null == _pagination) {
+      _pagination =
+          new Pagination(book: _book, bookDecoder: _decoder, size: _pageSize);
+      _pagination.init(pageControllerStream);
+    }
+  }
+
+  void nextPage(pageControllerStream) {
+    _pagination.getPageData(pageControllerStream);
+  }
+
+  int get childCount {
+    if (_pagination.pageData != null) {
+      return _pagination.pageData.length - 1;
+    } else {
+      return 0;
     }
   }
 
@@ -97,8 +100,6 @@ class LightEngine {
   Style get style {
     return Style.values[Style.currentId];
   }
-
-  int childCount = 20;
 
   String get title {
     return 'title...';
@@ -112,7 +113,7 @@ class LightEngine {
     try {
       print('get content index=$index');
       var page = _pagination[index];
-      section = _decoder.getSection(page[0], page[1]);
+      section = _decoder.getSection(page[0], page[1] - page[0]);
       if (null == section) {
         return 'get section error.';
       }
@@ -123,17 +124,15 @@ class LightEngine {
     }
   }
 
-  Size _pageSize;
-
-  String _pagingHashCode;
-
-  String _paintHashCode;
-
-  String get pagingHashCode {
-    return hashValues(_pageSize, fontSize, lineHeight, textDirection.toString())
-        .toString();
+  void savePage(int index) {
+    bookService.setOffset(_book, index);
   }
 
+  int loadPage() {
+    return bookService.getOffset(_book);
+  }
+
+  Size _pageSize;
   double get fontSize => Style.fontSize;
 
   double get lineHeight => Style.height;
@@ -149,24 +148,15 @@ class LightEngine {
       return;
     }
     _pageSize = size;
-    _pagination?.check(pagingHashCode);
   }
 
-  /// get the max lines from Pagination
-  int get maxLines => _pagination.maxLines;
+  Size get pageSize {
+    return _pageSize;
+  }
 
   int get estimateMaxLines {
     return _pageSize.height ~/ (fontSize * lineHeight);
   }
-
-  void _initState() {}
-
-  void _setState() {
-    _stateSetter(() {});
-  }
-
-  /// calculate the hashCode to just whether to repaint
-  void _needRepaint() {}
 
   void close() {
     _streamSubscription?.cancel();

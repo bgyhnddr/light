@@ -68,4 +68,6 @@ class Book {
     if (null == value || value is! Book) return false;
     return value.uri == this.uri;
   }
+
+  int get hashCode => uri.hashCode;
 }

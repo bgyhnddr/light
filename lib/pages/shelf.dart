@@ -69,7 +69,8 @@ class _ShelfState extends State<Shelf> {
       update(book);
     } else {
       /// jump to reader
-      Navigator.push(context, new MaterialPageRoute(builder: (BuildContext context){
+      Navigator.push(context,
+          new MaterialPageRoute(builder: (BuildContext context) {
         return new Reader(book: book);
       }));
     }
@@ -107,7 +108,7 @@ class _ShelfState extends State<Shelf> {
                         onPressed: () {
                           Navigator.pop(context, true);
                         })
-                  ])).then<bool>((value) {
+                  ])).then((value) {
         if (true == value) {
           service.bookService.removeBooks(selectedBooks);
 

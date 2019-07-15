@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show required, compute;
 import 'package:epub/epub.dart';
+import 'package:gbk2utf8/gbk2utf8.dart';
 import 'package:html/parser.dart';
 import 'package:html/dom.dart' as dom;
 import '../models/book.dart';
@@ -83,13 +84,13 @@ class BookDecoder {
 Map<String, dynamic> _decodeText(String uri) {
   try {
     File file = new File(uri);
-    RandomAccessFile randomAccessFile = file.openSync(mode: FileMode.READ);
+    RandomAccessFile randomAccessFile = file.openSync(mode: FileMode.read);
     String charset = charsetDetector(randomAccessFile);
     String content = '';
     List<Chapter> chapters = <Chapter>[];
     switch (charset) {
       case 'gbk':
-        throw new Exception('gbk格式暂不支持');
+        content = gbk.decode(file.readAsBytesSync());
         break;
       case 'utf8':
         content = utf8.decode(file.readAsBytesSync(), allowMalformed: true);
@@ -108,7 +109,7 @@ Map<String, dynamic> _decodeText(String uri) {
   }
 }
 
-Map<String, dynamic> _decodeEpub(String uri) {
+Future<Map<String, dynamic>> _decodeEpub(String uri) async {
   try {
     print('decode epub...');
     File targetFile = new File(uri);
@@ -117,7 +118,7 @@ Map<String, dynamic> _decodeEpub(String uri) {
     List<Map> chapters = <Map>[];
 
     // Opens a book and reads all of its content into the memory
-    EpubBook epubBook = EpubReader.readBookSync(bytes);
+    EpubBook epubBook = await EpubReader.readBook(bytes);
 
 //    content = epubBook.Content.toString();
     epubBook.Chapters?.forEach((EpubChapter chapter) {

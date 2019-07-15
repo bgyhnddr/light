@@ -18,6 +18,8 @@ class Reader extends StatefulWidget {
 }
 
 class _ReaderState extends State<Reader> {
+  StreamController<dynamic> pageControllerStream = StreamController<dynamic>();
+
   SystemService service = new SystemService();
   LightEngine lightEngine;
 
@@ -31,7 +33,6 @@ class _ReaderState extends State<Reader> {
   Map<String, double> tapGrid = <String, double>{};
 
   /// the size of screen
-  Size mediaSize;
 
   bool isShowMenu = false;
 
@@ -43,7 +44,9 @@ class _ReaderState extends State<Reader> {
   SliverChildBuilderDelegate childBuilderDelegate;
 
   /// to change the page
-  void handlePageChanged(bool value) {}
+  void handlePageChanged(bool value) {
+    print('change:' + value.toString());
+  }
 
   /// tu show menu
   Future<Null> handleShowMenu() async {
@@ -54,6 +57,7 @@ class _ReaderState extends State<Reader> {
   void handleTapUp(TapUpDetails tapUpDetails) {
     double x = tapUpDetails.globalPosition.dx;
     double y = tapUpDetails.globalPosition.dy;
+    Size mediaSize = lightEngine.pageSize;
     if (tapGrid.isEmpty) {
       double x1 = mediaSize.width *
           (tapRatio['x'][0] /
@@ -89,7 +93,9 @@ class _ReaderState extends State<Reader> {
         // open the menu
         isShowMenu = true;
         handleShowMenu().then((value) {
-          if (true == value) {}
+            print('showmenu:' + value.toString());
+          if (true == value) {
+          }
         });
       }
     }
@@ -104,40 +110,41 @@ class _ReaderState extends State<Reader> {
   }
 
   Widget pageBuilder(BuildContext contxt, int index) {
-    return new Container(
-      decoration: new BoxDecoration(
+    return Container(
+      decoration: BoxDecoration(
           color: lightEngine.style.backgroundColor,
           image: lightEngine.style.image),
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: new Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          new Container(
+          Container(
             height: 30.0,
-            child: new Row(
+            child: Row(
               children: <Widget>[
-                new Text(lightEngine.title),
+                Text(lightEngine.title),
               ],
             ),
           ),
-          new Expanded(
-            child: new Container(
-              color: Colors.yellow,
-              child: new Text(
-                lightEngine.getContent(index),
-                style: Style.textStyle,
-                overflow: TextOverflow.clip,
-                maxLines: lightEngine.maxLines,
-                textScaleFactor: 1.0,
-              ),
-            ),
+          Expanded(
+            child: GestureDetector(
+                onTapUp: handleTapUp,
+                child: Container(
+                  color: Colors.white,
+                  child: Text(
+                    lightEngine.getContent(index),
+                    style: Style.textStyle,
+                    overflow: TextOverflow.clip,
+                    textScaleFactor: 1.0,
+                  ),
+                )),
           ),
-          new SizedBox(
+          SizedBox(
             height: 30.0,
-            child: new Row(
+            child: Row(
               children: <Widget>[
-                new Text('底部信息'),
+                Text('${(index + 1).toString()}/${lightEngine.childCount}'),
               ],
             ),
           )
@@ -146,57 +153,60 @@ class _ReaderState extends State<Reader> {
     );
   }
 
+  bool dataLoad = false;
+
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIOverlays([]);
-    lightEngine = new LightEngine(book: widget.book, stateSetter: setState);
+    lightEngine = LightEngine(book: widget.book, stateSetter: setState);
+    lightEngine.init().then((controller) {
+      lightEngine.buildPage(pageControllerStream);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return new Scaffold(
-      body: new LayoutBuilder(
+    return Scaffold(
+      body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraint) {
           lightEngine.pageSize =
-              new Size(constraint.maxWidth - 40.0, constraint.maxHeight - 60.0);
-          if (null == pageControllerFuture) {
-            pageControllerFuture = lightEngine.controller;
-          }
-          return new Container(
-            color: Colors.black45,
-            child: new FutureBuilder(
-                future: pageControllerFuture,
-                builder: (BuildContext context,
-                    AsyncSnapshot<PageController> snapshot) {
-                  if (ConnectionState.waiting == snapshot.connectionState) {
-                    return new Center(
-                      child: new TextIndicator(),
-                    );
-                  } else if (ConnectionState.done == snapshot.connectionState &&
-                      !snapshot.hasError &&
-                      snapshot.hasData &&
-                      snapshot.data is PageController) {
-                    pageController = snapshot.data;
-                    return PageView.custom(
-                        childrenDelegate: new SliverChildBuilderDelegate(
-                            pageBuilder,
-                            childCount: lightEngine.childCount,
-                            addRepaintBoundaries: false,
-                            addAutomaticKeepAlives: false));
-                  } else {
-                    return new Container(
-                      padding: const EdgeInsets.all(20.0),
-                      child: new Center(
-                        child: new Text(
-                          '解析失败：${snapshot.error}',
-                          style: waitingTextStyle,
-                        ),
-                      ),
-                    );
+              Size(constraint.maxWidth - 40.0, constraint.maxHeight - 100.0);
+
+          Widget child;
+          child = StreamBuilder(
+              stream: pageControllerStream.stream,
+              builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+                print(snapshot.connectionState);
+                print(snapshot.data);
+                if (snapshot.data == 'end') {
+                  dataLoad = true;
+                  if (pageController == null) {
+                    pageController =
+                        PageController(initialPage: lightEngine.loadPage());
                   }
-                }),
-          );
+                  return PageView.custom(
+                      onPageChanged: (page) {
+                        lightEngine.savePage(page);
+                      },
+                      controller: pageController,
+                      childrenDelegate: new SliverChildBuilderDelegate(
+                          pageBuilder,
+                          childCount: lightEngine.childCount,
+                          addRepaintBoundaries: false,
+                          addAutomaticKeepAlives: false));
+                } else if (snapshot.data is String) {
+                  lightEngine.nextPage(pageControllerStream);
+                  return new Center(
+                    child: Text(snapshot.data.toString()),
+                  );
+                } else {
+                  return Center(
+                    child: TextIndicator(),
+                  );
+                }
+              });
+          return Container(color: Colors.black45, child: child);
         },
       ),
     );
@@ -205,6 +215,7 @@ class _ReaderState extends State<Reader> {
   @override
   void dispose() {
     lightEngine.close();
+    pageControllerStream.close();
     SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
     super.dispose();
   }
