@@ -55,6 +55,7 @@ class Pagination {
     } else {
       pageData = List<int>();
       pageData.add(0);
+      streamController.add('begin');
     }
   }
 
@@ -67,6 +68,7 @@ class Pagination {
             content.substring(offset, min(offset + 400, content.length)));
         pageData.add(offset);
       } else {
+        bookService.setPagingData(_book, pageData);
         streamController.sink.add('end');
         return;
       }

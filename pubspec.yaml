@@ -16,6 +16,7 @@ dependencies:
   html: "^0.13.3"
   epub: "^2.0.0"
   gbk2utf8: "^1.0.1"
+  intl: "^0.15.8"
 
 dev_dependencies:
   flutter_test:

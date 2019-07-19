@@ -34,6 +34,7 @@ class LightEngine {
   final BookService bookService = new BookService();
 
   StreamSubscription _streamSubscription;
+  StreamController<dynamic> _pageControllerStream;
 
   bool inited = false;
 
@@ -75,7 +76,8 @@ class LightEngine {
     }
   }
 
-  void buildPage(pageControllerStream) async {
+  void buildPage(StreamController<dynamic> pageControllerStream) async {
+    _pageControllerStream = pageControllerStream;
     if (null == _pagination) {
       _pagination =
           new Pagination(book: _book, bookDecoder: _decoder, size: _pageSize);
@@ -83,7 +85,7 @@ class LightEngine {
     }
   }
 
-  void nextPage(pageControllerStream) {
+  void nextPage(StreamController<dynamic> pageControllerStream) {
     _pagination.getPageData(pageControllerStream);
   }
 
@@ -111,7 +113,6 @@ class LightEngine {
 
   String getContent(int index) {
     try {
-      print('get content index=$index');
       var page = _pagination[index];
       section = _decoder.getSection(page[0], page[1] - page[0]);
       if (null == section) {
@@ -143,7 +144,6 @@ class LightEngine {
   /// recalculate pagination if need.
   set pageSize(Size size) {
     assert(null != size);
-    print('set page size: $size');
     if (null != _pageSize || size == _pageSize) {
       return;
     }
@@ -160,6 +160,7 @@ class LightEngine {
 
   void close() {
     _streamSubscription?.cancel();
+    _pageControllerStream?.close();
     _cache[_book] = null;
   }
 }

@@ -56,8 +56,6 @@ class BookDecoder {
   int get maxLength => content?.length;
 
   dynamic getSection(int offset, int length, {bool raw: false}) {
-    print('get section offset=$offset length=$length');
-    print('content.length = ${content.length}');
     String text;
     if (!(offset >= 0) || !(length > 0)) {
       return null;
