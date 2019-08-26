@@ -286,7 +286,7 @@ class _ReaderState extends State<Reader> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     super.initState();
 
-    SystemChrome.setEnabledSystemUIOverlays([]);
+    // SystemChrome.setEnabledSystemUIOverlays([]);
     lightEngine = LightEngine(book: widget.book, stateSetter: setState);
     lightEngine.init().then((controller) {
       lightEngine.buildPage(pageControllerStream);

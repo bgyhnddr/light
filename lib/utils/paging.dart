@@ -51,7 +51,8 @@ class Paging {
       ..text = new TextSpan(text: content, style: _textStyle)
       ..layout(maxWidth: _size.width);
     return _textPainter
-        .getPositionForOffset(Offset(_size.width, _size.height))
+        .getPositionForOffset(
+            Offset(_size.width, _size.height - _textStyle.height))
         .offset;
   }
 }

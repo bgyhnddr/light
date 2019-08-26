@@ -118,4 +118,8 @@ class SystemService {
     }
     return _bookService;
   }
+
+  removeKey(String key) {
+    _prefs.remove(key);
+  }
 }

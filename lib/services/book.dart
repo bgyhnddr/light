@@ -68,12 +68,12 @@ class BookService {
     return count;
   }
 
-  int removeBooks(List<Book> list) {
-    if (null == list || list.isEmpty) return 0;
+  void removeBooks(List<Book> list) {
+    if (null == list || list.isEmpty) return;
     Map<String, Book> books = getBooks();
-    int start = books.length;
     list.forEach((Book v) {
       books.removeWhere((_, Book book) => book == v);
+      service.removeKey(v.uri + paging_data_suffix);
     });
     _books = books;
     Map<String, dynamic> jsons = <String, dynamic>{};
@@ -81,7 +81,6 @@ class BookService {
       jsons[key] = book.toJson();
     });
     service.setString(books_key, json.encode(jsons));
-    return start - books.length;
   }
 
   void removeBook(Book book) {
